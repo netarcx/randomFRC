@@ -1,5 +1,15 @@
+# Secrets / local config
 .env
 config.yaml
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Claude
 .claude/
+CLAUDE.md
