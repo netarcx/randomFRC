@@ -35,9 +35,7 @@ def _detect_hw_encoder(preference: str) -> tuple[str, list[str]]:
     if preference in ("videotoolbox", "auto"):
         candidates.append(("videotoolbox", "h264_videotoolbox", []))
     if preference in ("vaapi", "auto"):
-        candidates.append(("vaapi", "h264_vaapi", [
-            "-vaapi_device", "/dev/dri/renderD128",
-        ]))
+        candidates.append(("vaapi", "h264_vaapi", []))
 
     ffmpeg_path = shutil.which("ffmpeg")
     if not ffmpeg_path:
@@ -163,9 +161,7 @@ class VideoStreamer:
             args.extend(["-preset", self._config.preset])
 
         # Extra encoder-specific args (e.g., nvenc preset)
-        for arg in self._encoder_args:
-            if arg not in ("-vaapi_device", "/dev/dri/renderD128"):
-                args.append(arg)
+        args.extend(self._encoder_args)
 
         args.extend(["-b:v", self._config.video_bitrate])
 

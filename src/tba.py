@@ -42,6 +42,7 @@ class TBAClient:
         self._delay = config.request_delay
         self._last_request_time = 0.0
         self._etag_cache: dict[str, tuple[str, Any]] = {}  # url -> (etag, data)
+        self._max_cache_entries = 500
 
     def _get(self, path: str) -> Any:
         """Rate-limited GET with ETag caching."""
@@ -66,6 +67,10 @@ class TBAClient:
 
         etag = resp.headers.get("ETag")
         if etag:
+            if len(self._etag_cache) >= self._max_cache_entries:
+                # Evict oldest entry (first inserted)
+                oldest = next(iter(self._etag_cache))
+                del self._etag_cache[oldest]
             self._etag_cache[url] = (etag, data)
 
         return data
@@ -111,7 +116,10 @@ class TBAClient:
                 if not yt_id:
                     continue
                 event_key = match.get("event_key", "")
-                year = int(event_key[:4]) if len(event_key) >= 4 else 0
+                try:
+                    year = int(event_key[:4]) if len(event_key) >= 4 else 0
+                except ValueError:
+                    year = 0
                 description = match.get("key", "")
                 videos.append(MatchVideo(
                     youtube_id=yt_id,

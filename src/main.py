@@ -27,6 +27,13 @@ class Application:
         self._running = True
         self._consecutive_errors = 0
 
+    def _safe_rebuild_pool(self) -> None:
+        """Rebuild pool with error handling so TBA outages don't crash the loop."""
+        try:
+            self._picker.build_pool()
+        except Exception:
+            logger.error("Failed to rebuild video pool", exc_info=True)
+
     def _setup_signals(self) -> None:
         signal.signal(signal.SIGTERM, self._handle_signal)
         signal.signal(signal.SIGINT, self._handle_signal)
@@ -45,13 +52,11 @@ class Application:
         if result == StreamResult.INTERRUPTED:
             return
 
-        self._consecutive_errors += 1
-
         if result == StreamResult.VIDEO_UNAVAILABLE:
             logger.warning("Video unavailable, skipping")
-            # Don't count as a real error for circuit breaker
-            self._consecutive_errors = max(0, self._consecutive_errors - 1)
             return
+
+        self._consecutive_errors += 1
 
         if result == StreamResult.RTMP_ERROR:
             backoff = min(2 ** self._consecutive_errors, 120)
@@ -72,14 +77,21 @@ class Application:
     def _sleep(self, seconds: float) -> None:
         """Sleep that respects shutdown signals."""
         end = time.monotonic() + seconds
-        while self._running and time.monotonic() < end:
-            time.sleep(min(1.0, end - time.monotonic()))
+        while self._running:
+            remaining = end - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(1.0, remaining))
 
     def run(self) -> None:
         self._setup_signals()
 
         logger.info("Building initial video pool...")
-        pool_size = self._picker.build_pool()
+        try:
+            pool_size = self._picker.build_pool()
+        except Exception:
+            logger.error("Failed to build initial video pool", exc_info=True)
+            sys.exit(1)
         if pool_size == 0:
             logger.error("No videos found matching filters! Check your config.")
             sys.exit(1)
@@ -101,10 +113,11 @@ class Application:
             if video is None:
                 logger.error("No videos available, retrying in 60s...")
                 self._sleep(60)
-                self._picker.build_pool()
+                self._safe_rebuild_pool()
                 continue
 
             # Retry loop for this video
+            result = StreamResult.INTERRUPTED
             retries = 0
             while retries <= self._config.stream.max_retries_per_video and self._running:
                 result = self._streamer.stream_video(video)

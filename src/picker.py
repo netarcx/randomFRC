@@ -26,11 +26,15 @@ class VideoPicker:
         if self._filters.events:
             # Direct event keys specified — build minimal EventInfo stubs
             logger.info("Using %d explicitly configured events", len(self._filters.events))
-            return [
-                EventInfo(key=ek, name=ek, year=int(ek[:4]) if len(ek) >= 4 else 0,
-                          state_prov="", district_abbrev=None)
-                for ek in self._filters.events
-            ]
+            events = []
+            for ek in self._filters.events:
+                try:
+                    year = int(ek[:4]) if len(ek) >= 4 else 0
+                except ValueError:
+                    year = 0
+                events.append(EventInfo(key=ek, name=ek, year=year,
+                                        state_prov="", district_abbrev=None))
+            return events
 
         all_events: list[EventInfo] = []
         for year in self._filters.years:
@@ -73,7 +77,15 @@ class VideoPicker:
         match_keys: set[str] = set()
         years = self._filters.years
         if self._filters.events:
-            years = list({int(ek[:4]) for ek in self._filters.events if len(ek) >= 4})
+            parsed_years = set()
+            for ek in self._filters.events:
+                try:
+                    if len(ek) >= 4:
+                        parsed_years.add(int(ek[:4]))
+                except ValueError:
+                    pass
+            if parsed_years:
+                years = list(parsed_years)
 
         for team in self._filters.teams:
             for year in years:
