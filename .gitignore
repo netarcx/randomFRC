@@ -1,0 +1,5 @@
+.env
+config.yaml
+__pycache__/
+*.pyc
+.claude/

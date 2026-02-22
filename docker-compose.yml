@@ -1,0 +1,24 @@
+services:
+  restreamer:
+    image: datarhei/restreamer:latest
+    ports:
+      - "8080:8080"
+      - "1935:1935"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  streamer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      restreamer:
+        condition: service_healthy
+    env_file: .env
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    restart: unless-stopped

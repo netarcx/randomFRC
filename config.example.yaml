@@ -1,0 +1,27 @@
+tba:
+  api_key: "${TBA_API_KEY}"
+  request_delay: 0.5    # seconds between TBA API requests
+  cache_ttl: 3600       # seconds before rebuilding the video pool
+
+filters:
+  years: [2023, 2024]
+  teams: []              # e.g. [254, 1678] — only matches involving these teams
+  events: []             # e.g. ["2024casf"] — overrides year-based resolution
+  states: []             # e.g. ["CA", "TX"] — filter events by state
+  districts: []          # e.g. ["fim", "ne"] — filter events by district
+  comp_levels: ["qm", "qf", "sf", "f"]  # qm=quals, qf=quarters, sf=semis, f=finals
+
+stream:
+  rtmp_url: "rtmp://restreamer:1935/live/external.stream"
+  rtmp_token: "${RTMP_TOKEN}"
+  hw_accel: "auto"       # auto | nvenc | videotoolbox | vaapi | none
+  video_bitrate: "2500k"
+  audio_bitrate: "128k"
+  preset: "veryfast"     # libx264 preset (GPU encoders use their own)
+  ytdlp_format: "best[height<=1080]"
+  max_retries_per_video: 2
+  retry_delay: 5
+  error_cooldown: 10
+
+logging:
+  level: "INFO"
